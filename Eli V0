@@ -1,0 +1,74 @@
+#include <ESP32Servo.h>
+
+// set pin numbers
+const int RevPin = 0;    // rev trigger button pin
+const int FirePin = 4;   // fire button pin
+const int N20Pin =  5;   // n20 pin
+const int esc = 6;       //ESC1 signal pin to esp pin 6
+
+//variables for brushlessmotor
+Servo m1;
+
+int thridle = 1200;     //idle throttle. decent value is 1200
+int throttle = 1800;    //full spin up pwm signal. max is 2k. 
+int zero = 1000;        //min pwm signal. keep at 1k
+
+// variable for storing the pushbutton status
+int FireState = 0;
+int RevState = 0;
+
+void setup() {
+  // initialize input pins
+  pinMode(FirePin, INPUT);
+  pinMode(RevPin, OUTPUT);
+
+  // initialize output pins
+  pinMode(N20Pin, OUTPUT);
+  pinMode(esc, OUTPUT);
+
+  //motor initialization?
+  m1.attach(esc, 1000, 2000);
+  
+  //esc arming
+  m1.writeMicroseconds(1000);
+  delay(1000);
+
+}
+
+void loop() {
+  // read input values
+  recieve_inputs()
+
+  //brushless motors logic
+  brushless_motors()
+
+  //N20 pusher logic
+  n20_pusher()
+  
+}
+
+void recieve_inputs(){
+  RevState = digitalRead(RevPin);
+  FireState = digitalRead(FirePin);
+}
+
+void brushless_motors(){
+
+  if (RevState > 0){
+    m1.writeMicroseconds(throttle);
+  } else {
+    m1.writeMicroseconds(zero);
+  }
+
+}
+
+void n20_pusher(){
+  // check if the fire button is pressed
+  if (FireState == HIGH) {
+    // enable N20
+    digitalWrite(N20Pin, HIGH);
+  } else {
+    // disable N20
+    digitalWrite(N20Pin, LOW);
+  }
+}

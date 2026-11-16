@@ -1,0 +1,135 @@
+```c
+//definitions
+//mode select definitions
+#define SEMI 1
+#define BURST_2 2
+#define BURST_3 3
+#define AUTO 4
+
+//pin assignments
+#define VOLT_PIN A0
+#define ESC_PIN_1 2
+#define ESC_PIN_2 3
+#define TRIG_PIN 4
+#define REV_PIN 5
+#define SOLENOID_PIN 7
+
+//battery safety stuff
+#define RAMPWAIT 1000
+#define FAILTIME 1000
+#define BATTFREQ 5000
+#define SAFETYTIMEOUT 10000
+#define VOLTAGE_DIVIDER 0.164
+
+//fire rate settings
+#define HIGHRPM 205
+#define HALFRPM 128
+#define LOWRPM 51
+#define NORPM 0
+
+// var setup
+const byte singleShotPulse = 35;                     //power pulse time for solenoid
+byte revPressed = 0;
+byte trigPressed = 0;
+
+//firing
+byte fireRate = 10;                                                             //target fire rate (darts per second)
+byte singleShotDelay = ceil((1000 - (fireRate * singleShotPulse)) / fireRate);  //how long to wait after powering solenoid before it can be powered again
+byte mode = SEMI;                                                               //fire mode
+
+unsigned short shotCount = 0;     //fired counter
+bool motorsRevved = false;              //flywheels spun up?
+bool lowBatt = false;             //when true, low battery condition has been tripped. lock blaster for recharge
+float voltage = 0.0;              //numerical voltage checked in A0
+unsigned long presentSpeed = NORPM;
+
+void setup() {
+  //attach ESC to pins, set up pulse length and drive to zero pwm signal to enable them
+  pinMode(ESC_PIN_1, OUTPUT);
+  pinMode(ESC_PIN_2, OUTPUT);
+
+  //setup input and output pins and configure the rev and trigger buttons to react properly
+  pinMode(VOLT_PIN, INPUT);
+  pinMode(SOLENOID_PIN, OUTPUT);
+  pinMode(REV_PIN, INPUT);
+  pinMode(TRIG_PIN, INPUT);
+
+
+  //read voltage
+  voltage = floor((analogRead(VOLT_PIN) * VOLTAGE_DIVIDER));
+
+}
+
+void loop() {
+  //read button states
+  readInputs();
+
+  //low power lockout
+  if ((byte)voltage < 128) {
+    lowBatt = true;
+  }
+
+  if(revPressed && !lowBatt){
+    for(int i = presentSpeed; i < HIGHRPM; i += 2){
+      analogWrite(ESC_PIN_1, i);
+      analogWrite(ESC_PIN_2, i);
+      presentSpeed = i;
+      delay(10);
+      revPressed = digitalRead(REV_PIN);
+      if(!revPressed){
+        break;
+      }
+    }
+    motorsRevved = true;
+  }
+  else{
+    motorsRevved = false;
+    for(int i = presentSpeed; i > LOWRPM; i -= 2){
+      analogWrite(ESC_PIN_1, i);
+      analogWrite(ESC_PIN_2, i);
+      presentSpeed = i;
+      delay(10);
+      revPressed = digitalRead(REV_PIN);
+      if(revPressed){
+        break;
+      }
+    }
+  }
+  //perform following when trigger is pressed so blaster fires
+  if(trigPressed && !lowBatt && motorsRevved){
+    switch(mode) {
+      case SEMI:
+        fireBlaster(1);
+        while(trigPressed){readInputs();} //stays 
+        break;
+      case BURST_2:
+        fireBlaster(2);
+        while(trigPressed){readInputs();} //stays 
+        break;
+      case BURST_3:
+        fireBlaster(3);
+        while(trigPressed){readInputs();} //stays 
+        break;
+      case AUTO:
+        while(trigPressed){
+          fireBlaster(1); //since the there is no trig depression hold, this will just fire a singular burst repeatedly through each loop
+          readInputs();
+        }
+        break;
+    }
+  }
+}
+
+void readInputs(){
+  revPressed = digitalRead(REV_PIN);
+  trigPressed = digitalRead(TRIG_PIN);
+}
+
+void fireBlaster(int timesToFire){
+    for(int i = 0; i < timesToFire, i++;){
+        digitalWrite(SOLENOID_PIN, HIGH);
+        delay(singleShotDelay);
+        digitalWrite(SOLENOID_PIN, LOW);
+    }
+}
+```

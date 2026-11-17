@@ -1,0 +1,45 @@
+#define TRIGGER_I 5
+#define PUSHER_I 6
+#define TRIGGER_O 8
+#define PUSHER_O 7
+
+//     Output diagram:
+//        | USB  |
+//        |HEADER|
+// A3/D0            VBUS
+// A3/D1            GND
+// A3/D2            3.3V-OUT
+// A3/D3  esp32-s3  D10/A10
+// A3/D4            D9/A9
+// A3/D5            D8/A8
+//    D6            D7
+
+int trigState = 0;
+int pushState = 0;
+
+void setup() {
+  pinMode(TRIGGER_I, INPUT);
+  pinMode(PUSHER_I, INPUT);
+  pinMode(TRIGGER_O, OUTPUT);
+  pinMode(PUSHER_O, OUTPUT);
+  Serial.begin(9600); //setup a serial console with a BAUD rate of 9600
+}
+
+void loop() {
+  trigState = digitalRead(TRIGGER_I);
+  pushState = digitalRead(PUSHER_I);
+
+  if (trigState == HIGH) {
+    digitalWrite(8, 1);
+    Serial.print("boogity");
+  } else {
+    digitalWrite(8, 0);
+  }
+
+  if (pushState == HIGH) {
+    digitalWrite(7, 1);
+    Serial.println("kachow");
+  } else {
+    digitalWrite(7, 0);
+  }
+}
